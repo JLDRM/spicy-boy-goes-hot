@@ -1,28 +1,24 @@
 const graphql = require("graphql");
 const _ = require("lodash");
 
+const characterModel = require("../models/character");
+const planetModel = require("../models/planet");
+
+// Define the SCHEMA to pass as a parameter at the graphqlHTTP function
+// this will describe the data on this kind of graph
+// describe the object types and the relation between this object types
+// how to query, receive, mutate and change the data
+
+// Grab some properties from graphql as tools
 const {
   GraphQLObjectType,
   GraphQLString,
   GraphQLSchema,
   GraphQLID,
   GraphQLInt,
-  GraphQLList
+  GraphQLList,
+  GraphQLNonNull // Add required fields within the mutations
 } = graphql;
-
-var dummyCharacters = [
-  { id: "1", name: "Ricky", job: "Terrorist", planetId: "1" },
-  { id: "2", name: "Morty", job: "Terrorist Assistant", planetId: "1" },
-  { id: "3", name: "Raptor Photographer", job: "Photographer", planetId: "3" },
-  { id: "4", name: "Reverse Giraffe", job: "Comediant", planetId: "3" },
-  { id: "5", name: "Scary Terry", job: "Bitch", planetId: "2" }
-];
-
-var dummyPlanets = [
-  { name: "Earth", age: 96, id: "1" },
-  { name: "Putonium", age: 45, id: "2" },
-  { name: "Mars", age: 78, id: "3" }
-];
 
 const CharacterType = new GraphQLObjectType({
   name: "Character",
@@ -33,7 +29,7 @@ const CharacterType = new GraphQLObjectType({
     planet: {
       type: PlanetType,
       resolve(parent, args) {
-        return _.find(dummyPlanets, { id: parent.planetId });
+        return planetModel.findById(parent.planetId);
       }
     }
   })
@@ -48,7 +44,7 @@ const PlanetType = new GraphQLObjectType({
     characters: {
       type: new GraphQLList(CharacterType),
       resolve(parent, args) {
-        return _.filter(dummyCharacters, { planetId: parent.id });
+        return characterModel.find({ planetId: parent.id });
       }
     }
   })
@@ -59,21 +55,73 @@ const RootQuery = new GraphQLObjectType({
   fields: {
     character: {
       type: CharacterType,
-      args: { id: { type: GraphQLID } }, // args allow us to query for a particular book
+      args: { id: { type: GraphQLID } }, // args allow us to pass data to resolve function
       resolve(parent, args) {
-        return _.find(dummyData, { id: args.id });
+        return characterModel.findById(args.id);
       }
     },
     planet: {
       type: PlanetType,
       args: { id: { type: GraphQLID } },
       resolve(parent, args) {
-        return _.find(dummyPlanets, { id: args.id });
+        return planetModel.findById(args.id);
+      }
+    },
+    characters: {
+      type: new GraphQLList(CharacterType),
+      resolve(parent, args) {
+        return characterModel.find();
+      }
+    },
+    planets: {
+      type: new GraphQLList(PlanetType),
+      resolve(parent, args) {
+        return planetModel.find();
+      }
+    }
+  }
+});
+
+// What are mutations?
+// Is what allow us mutate or change our data: adding data, deleting data...
+// We must explicitly declare what data could be added, deleted, updated...
+const Mutation = new GraphQLObjectType({
+  name: "Mutation",
+  fields: {
+    addPlanet: {
+      type: PlanetType,
+      args: {
+        name: { type: new GraphQLNonNull(GraphQLString) },
+        age: { type: new GraphQLNonNull(GraphQLInt) }
+      },
+      resolve(parent, args) {
+        let planet = new planetModel({
+          name: args.name,
+          age: args.age
+        });
+        return planet.save();
+      }
+    },
+    addCharacter: {
+      type: CharacterType,
+      args: {
+        name: { type: new GraphQLNonNull(GraphQLString) },
+        job: { type: new GraphQLNonNull(GraphQLString) },
+        planetId: { type: new GraphQLNonNull(GraphQLID) }
+      },
+      resolve(parent, args) {
+        let character = new characterModel({
+          name: args.name,
+          job: args.job,
+          planetId: args.planetId
+        });
+        return character.save();
       }
     }
   }
 });
 
 module.exports = new GraphQLSchema({
-  query: RootQuery
+  query: RootQuery,
+  mutation: Mutation
 });
