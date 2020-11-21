@@ -1,15 +1,34 @@
-import React, { Component } from "react";
+import React from "react";
+import { useQuery } from "@apollo/react-hooks";
+import { gql } from "apollo-boost";
 
-class CharactersList extends Component {
-  render() {
-    return (
-      <div>
-        <ul id="book-list">
-          <li></li>
-        </ul>
-      </div>
-    );
+const GET_CHARACTERS = gql`
+  query {
+    characters {
+      name
+      job
+      planet {
+        name
+      }
+    }
   }
-}
+`;
 
-export default CharactersList;
+export default function CharactersList() {
+  const { loading, err, data } = useQuery(GET_CHARACTERS);
+
+  if (loading) return <p>Loading...</p>;
+  if (err) return <p>Error : {err}(</p>;
+
+  console.log(data);
+
+  return (
+    <div>
+      <ul id="character-list">
+        {data.characters.map(({ name, job, planet }) => (
+          <li key={name}>Name: {name} Job: {job} Planet: {planet.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}

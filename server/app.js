@@ -1,12 +1,17 @@
 const express = require("express");
+const cors = require("cors");
 const mongoose = require("mongoose");
 const graphqlHTTP = require("express-graphql");
 const schema = require("./schema/schema");
 
 const app = express();
 
+const mongo_connection = process.env['MONGO_CONNECTION'];
+
+const corsOptions = { origin: "http://localhost:3000" };
+
 mongoose.connect(
-  "mongodb+srv://Crocubot:DontBeRude@spicy-boy-stays-hot-bquzt.mongodb.net/test?retryWrites=true&w=majority",
+  mongo_connection,
   { useNewUrlParser: true, useUnifiedTopology: true }
 );
 mongoose.connection.once("open", () => {
@@ -16,6 +21,7 @@ mongoose.connection.once("open", () => {
 // Middleware to handle graphql calls
 app.use(
   "/graphql",
+  cors(corsOptions),
   graphqlHTTP({
     schema,
     graphiql: true
